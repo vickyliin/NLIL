@@ -3,6 +3,11 @@ News Legal Information Labeling
 
 a.k.a Natural Language in Law
 
+## Code
+- train_law_classifier_tfidf.ipynb
+	- 全世界最廢的model，沒有之一
+	- Train/Valid acc: 0.9/0.6
+
 ## Data
 
 - news.json
