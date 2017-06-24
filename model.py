@@ -56,7 +56,7 @@ class CNN(Model):
         weights=[wordvec.vectors], name='embed')
 
     if sa_scale:
-      attn = Lambda(scaled_attention(sa_scale), name="attention")
+      attn = Lambda(scaled_attention(sa_scale), name='attention')
       drop_sa = Dropout(drop_sa, name='drop_sa')
 
     if not hasattr(filter, '__getitem__'):
