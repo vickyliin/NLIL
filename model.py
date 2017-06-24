@@ -90,7 +90,7 @@ class CNN(Model):
       h = [drop_conv[j](hi) for hi in h]
 
     if residue:
-      h = [add(h[i], r[i]) for i in range(n_clause)]
+      h = [add([h[i], r[i]]) for i in range(n_clause)]
     
     h = [pool(hi) for hi in h]
     h = [flatten(hi) for hi in h]
