@@ -28,7 +28,8 @@ def scaled_attention(scale):
 
 class CNN(Model):
   def __init__(self, wordvec='data/wordvec.txt', window=1, 
-      maxlen=100, filter=250, drop_emb=.5, drop_conv=.5, drop_sa=.25,
+      maxlen=100, filter=250, 
+      drop_emb=.5, drop_conv=.5, drop_sa=.25, drop_res=1, drop_dense=1, 
       feature=0, n_layers=1, sa_scale=0, residue=False, dense_layers=[],
       pad_position=['pre', 'pre'], n_relation=4, n_clause=2, torel=None):
 
@@ -55,17 +56,22 @@ class CNN(Model):
         weights=[wordvec.vectors], name='embed')
 
     if sa_scale:
-      attn = Lambda(scaled_attention(sa_scale), name="attention")
+      attn = Lambda(scaled_attention(sa_scale), name='attention')
       drop_sa = Dropout(drop_sa, name='drop_sa')
 
     if not hasattr(filter, '__getitem__'):
       filter = (filter, ) * n_layers
     if not hasattr(drop_conv, '__getitem__'):
       drop_conv = (drop_conv, ) * n_layers
+    if not hasattr(drop_res, '__getitem__'):
+      drop_res = (drop_res, ) * n_layers
+    if not hasattr(drop_dense, '__getitem__'):
+      drop_dense = (drop_dense, ) * len(dense_layers)
 
     if residue:
       reduce = [[Dense(filter[j], name='reduce%d-%d'%(i, j)) for j in range(n_layers)] for i in range(n_clause)]
       add = Add(name='add')
+      drop_res = [Dropout(drop_res[j], name='drop_res-%d'%j) for j in range(n_layers)]
 
     conv = [[Conv1D(filter[j], window, activation='relu', name='conv%d-%d'%(i, j)) for j in range(n_layers)] for i in range(n_clause)]
     drop_conv = [Dropout(drop_conv[j], name='drop_conv-%d'%j) for j in range(n_layers)]
@@ -74,6 +80,7 @@ class CNN(Model):
     drop_emb = Dropout(drop_emb, name='drop_emb')
     flatten = Flatten(name='flatten')
     dense_layers = [Dense(n, activation='relu', name='dense%d'%i) for i, n in enumerate(dense_layers)]
+    drop_dense = [Dropout(dp, name='drop_dense-%d'%j) for j, dp in enumerate(drop_dense)]
     dense_out = Dense(n_relation, activation='softmax', name='dense_out')
     concat = Concatenate(name='concat')
 
@@ -88,6 +95,7 @@ class CNN(Model):
     for j in range(n_layers):
       if residue:
         r = [reduce[i][j](h[i]) for i in range(n_clause)]
+        r = [drop_res[j](ri) for ri in r]
       h = [conv[i][j](h[i]) for i in range(n_clause)]
       h = [drop_conv[j](hi) for hi in h]
       if residue:
@@ -98,8 +106,8 @@ class CNN(Model):
 
     h = concat(h+feature)
 
-    for dense in dense_layers:
-      h = dense(h)
+    for dense, drop in zip(dense_layers, drop_dense):
+      h = drop(dense(h))
     output = dense_out(h)
 
     super().__init__(inputs=inputs+feature, outputs=output)
