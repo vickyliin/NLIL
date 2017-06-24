@@ -1,5 +1,4 @@
-corpus.txt
-wordvec.txt
+*.sw?
 PyCCS/
 news.json
 
