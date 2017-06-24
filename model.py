@@ -29,7 +29,7 @@ def scaled_attention(scale):
 class CNN(Model):
   def __init__(self, wordvec='data/wordvec.txt', window=1, 
       maxlen=100, filter=250, 
-      drop_emb=.5, drop_conv=.5, drop_sa=.25, drop_res=1,
+      drop_emb=.5, drop_conv=.5, drop_sa=.25, drop_res=1, drop_dense=1, 
       feature=0, n_layers=1, sa_scale=0, residue=False, dense_layers=[],
       pad_position=['pre', 'pre'], n_relation=4, n_clause=2, torel=None):
 
@@ -65,6 +65,8 @@ class CNN(Model):
       drop_conv = (drop_conv, ) * n_layers
     if not hasattr(drop_res, '__getitem__'):
       drop_res = (drop_res, ) * n_layers
+    if not hasattr(drop_dense, '__getitem__'):
+      drop_dense = (drop_dense, ) * len(dense_layers)
 
     if residue:
       reduce = [[Dense(filter[j], name='reduce%d-%d'%(i, j)) for j in range(n_layers)] for i in range(n_clause)]
@@ -78,6 +80,7 @@ class CNN(Model):
     drop_emb = Dropout(drop_emb, name='drop_emb')
     flatten = Flatten(name='flatten')
     dense_layers = [Dense(n, activation='relu', name='dense%d'%i) for i, n in enumerate(dense_layers)]
+    drop_dense = [Dropout(dp, name='drop_dense-%d'%j) for j, dp in enumerate(drop_dense)]
     dense_out = Dense(n_relation, activation='softmax', name='dense_out')
     concat = Concatenate(name='concat')
 
@@ -103,8 +106,8 @@ class CNN(Model):
 
     h = concat(h+feature)
 
-    for dense in dense_layers:
-      h = dense(h)
+    for dense, drop in zip(dense_layers, drop_dense):
+      h = drop(dense(h))
     output = dense_out(h)
 
     super().__init__(inputs=inputs+feature, outputs=output)
