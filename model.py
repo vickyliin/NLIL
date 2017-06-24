@@ -29,9 +29,11 @@ def scaled_attention(scale):
 class CNN(Model):
   def __init__(self, wordvec='data/wordvec.txt', window=1, 
       maxlen=100, filter=250, drop_emb=.5, drop_conv=.5, drop_sa=.25,
-      feature=0, n_layers=1, sa_scale=0, residue=False, 
+      feature=0, n_layers=1, sa_scale=0, residue=False, dense_layers=[],
       pad_position=['pre', 'pre'], n_relation=4, n_clause=2, torel=None):
 
+    if type(dense_layers) is int:
+      dense_layers = [dense_layers]
     self.__dict__.update(locals())
     if torel is not None:
       self.n_relation = n_relation = len(torel)
@@ -62,16 +64,17 @@ class CNN(Model):
       drop_conv = (drop_conv, ) * n_layers
 
     if residue:
-      reduce = [Dense(filter[-1], name='reduce%d'%i) for i in range(n_clause)]
+      reduce = [[Dense(filter[j], name='reduce%d-%d'%(i, j)) for j in range(n_layers)] for i in range(n_clause)]
       add = Add(name='add')
 
-    conv = [tuple(Conv1D(filter[j], window, activation='relu', name='conv%d-%d'%(i, j)) for j in range(n_layers)) for i in range(n_clause)]
-    drop_conv = tuple(Dropout(drop_conv[j], name='drop_conv-%d'%j) for j in range(n_layers))
+    conv = [[Conv1D(filter[j], window, activation='relu', name='conv%d-%d'%(i, j)) for j in range(n_layers)] for i in range(n_clause)]
+    drop_conv = [Dropout(drop_conv[j], name='drop_conv-%d'%j) for j in range(n_layers)]
 
     pool = MaxPooling1D(maxlen, padding='same', name='pool')
     drop_emb = Dropout(drop_emb, name='drop_emb')
     flatten = Flatten(name='flatten')
-    dense = Dense(n_relation, activation='softmax', name='dense')
+    dense_layers = [Dense(n, activation='relu', name='dense%d'%i) for i, n in enumerate(dense_layers)]
+    dense_out = Dense(n_relation, activation='softmax', name='dense_out')
     concat = Concatenate(name='concat')
 
     # Forward
@@ -82,22 +85,22 @@ class CNN(Model):
       h = [attn(hi) for hi in h]
       h = [drop_sa(hi) for hi in h]
 
-    if residue:
-      r = [reduce[i](h[i]) for i in range(n_clause)]
-
     for j in range(n_layers):
+      if residue:
+        r = [reduce[i][j](h[i]) for i in range(n_clause)]
       h = [conv[i][j](h[i]) for i in range(n_clause)]
       h = [drop_conv[j](hi) for hi in h]
-
-    if residue:
-      h = [add([h[i], r[i]]) for i in range(n_clause)]
+      if residue:
+        h = [add([h[i], r[i]]) for i in range(n_clause)]
     
     h = [pool(hi) for hi in h]
     h = [flatten(hi) for hi in h]
 
     h = concat(h+feature)
 
-    output = dense(h)
+    for dense in dense_layers:
+      h = dense(h)
+    output = dense_out(h)
 
     super().__init__(inputs=inputs+feature, outputs=output)
     self.init_weights = self.get_weights()
