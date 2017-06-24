@@ -1,4 +1,7 @@
-#data/
+corpus.txt
+wordvec.txt
+PyCCS/
+news.json
 
 .DS_Store
 # Byte-compiled / optimized / DLL files
