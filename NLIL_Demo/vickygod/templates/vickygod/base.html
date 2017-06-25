@@ -25,6 +25,7 @@
         <h2>{{ Arg1 }}</h2>
         {{ Arg2 }}
         <hr>
+        <h2>Predicted Laws Sorted by Probability</h2>
         <ol>
         {% for pred in predict|slice:":25" %}
           {% if pred == Relation %}
