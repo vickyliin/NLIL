@@ -22,8 +22,8 @@
       <button type="submit" class="btn btn-primary">Submit</button>
       <div-->
       <div id="output">
-        <h2>{{ Arg1 }}</h2>
-        <div class="jumbotron">{{ Arg2 }}</div>
+        <h2>{{ title }} ({{ind}})</h2>
+        <div class="jumbotron">{{ content|safe }}</div>
         <hr>
         <h2>Predicted Laws Sorted by Probability</h2>
         <table class="table">

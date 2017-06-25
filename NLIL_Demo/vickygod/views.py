@@ -1,9 +1,12 @@
 import pickle
 import random
+import re
 import yaml
 
 from django.http import HttpResponse
 from django.shortcuts import render
+
+from sklearn.model_selection import train_test_split
 
 from .model import *
 
@@ -37,15 +40,18 @@ def init_model():
     henryp.evaluate(dataset)
     predict = henryp.predict_class(dataset)
     dataset['data', 'predict'] = predict
+    _, dataset = train_test_split(dataset, test_size=0.25, random_state=42)
 
 
 def nlil(request):
     init_model()
 
     ind = int(request.GET.get('ind', random.choice(dataset.data.index)))
-    Arg1 = ' '.join(dataset.data.Arg1[ind])
-    Arg2 = ' '.join(dataset.data.Arg2[ind])
+    title = dataset.raw.title[ind]
+    content = dataset.raw.content[ind]
     predict = np.dstack(dataset.data.predict[ind])[0]
     Relation = dataset.data.Relation[ind]
+    content = re.sub(r'(%s)' % Relation, r'<b style="background-color: yellow;">\1</b>', content)
+
     return render(request, 'vickygod/base.html',
-                  {'Arg1': Arg1, 'Arg2': Arg2, 'predict': predict, 'Relation': Relation})
+                  {'ind': ind, 'title': title, 'content': content, 'predict': predict, 'Relation': Relation})
