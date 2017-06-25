@@ -1,5 +1,8 @@
+import pandas as pd
+import numpy as np
+import word2vec
 import keras
-from keras.models import Model
+from keras.models import Model, Sequential
 from keras.layers import (
     Input, Dense, Flatten, Concatenate,
     Embedding, Conv1D, MaxPooling1D, Dropout,
@@ -10,9 +13,7 @@ from keras.layers.merge import Add, Dot
 from keras.utils.np_utils import to_categorical
 from keras.utils import plot_model
 from keras.preprocessing.sequence import pad_sequences
-import word2vec
 import tensorflow as tf
-import pandas as pd
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 session = tf.Session(config=config)
@@ -26,10 +27,39 @@ def scaled_attention(scale):
     return K.batch_dot(W, E, axes=1)
   return attention
 
+class Autoencoder(Model):
+  def __init__(self, dim=300, encode_layers=None, decode_layers=None):
+    if encode_layers is None:
+      encode_layers = [dim//2, dim//4]
+    if decode_layers is None:
+      decode_layers = [dim//2]
+    dim_code = encode_layers[-1]
+    self.__dict__.update(locals())
+
+    inputs = Input(shape=(dim, ), name='input')
+    enc = [Dense(encode_layers[0], input_shape=(dim,), activation='relu')]
+    enc += [Dense(n, activation='relu') for n in encode_layers[1:]]
+    self.encoder = encoder = Sequential(enc)
+
+    decoder = [Dense(decode_layers[0], input_shape=(dim_code, ), activation='relu')]
+    decoder += [Dense(n, activation='relu') for n in decode_layers[1:]+[dim]]
+    self.decoder = decoder = Sequential(decoder)
+
+    output = decoder(encoder(inputs))
+
+    super().__init__(inputs=inputs, outputs=output)
+    self.init_weights = self.get_weights()
+
+  def reset(self):
+    self.set_weights(self.init_weights)
+  def fit(self, train, valid=None, **kwargs):
+    val = (valid, valid)
+    return super().fit(train, train, validation_data=val, **kwargs)
+
 class CNN(Model):
   def __init__(self, wordvec='data/wordvec.txt', window=1, 
-      maxlen=100, filter=250, 
-      drop_emb=.5, drop_conv=.5, drop_sa=.25, drop_res=1, drop_dense=1, 
+      maxlen=100, filter=250, pe=False, 
+      drop_emb=.5, drop_conv=.5, drop_sa=.25, drop_res=0, drop_dense=0, 
       feature=0, n_layers=1, sa_scale=0, residue=False, dense_layers=[],
       pad_position=['pre', 'pre'], n_relation=4, n_clause=2, torel=None):
 
@@ -39,9 +69,8 @@ class CNN(Model):
     if torel is not None:
       self.n_relation = n_relation = len(torel)
 
-    wordvec = word2vec.load(wordvec)
+    self.wordvec = wordvec = word2vec.load(wordvec)
     vs, es = wordvec.vectors.shape
-    self.wordvec = wordvec
 
     # Input Layers
     inputs = [Input(shape=(maxlen,), name='clause%d'%i) for i in range(n_clause)]
@@ -68,6 +97,15 @@ class CNN(Model):
     if not hasattr(drop_dense, '__getitem__'):
       drop_dense = (drop_dense, ) * len(dense_layers)
 
+    if self.pe:
+      dim = es
+      pe_i, pe_p = np.meshgrid(range(dim), range(maxlen))
+      pe = np.sin(2*np.pi * pe_p/maxlen * pe_i/dim)
+      #pe = np.sin(pe_p/10000**(2*pe_i/dim))
+      #pe /= wordvec.vectors.max()*10
+      pe_const = K.constant(pe, name='pe')
+      pe = Lambda(lambda x: x+pe_const, name='pos_enc')
+
     if residue:
       reduce = [[Dense(filter[j], name='reduce%d-%d'%(i, j)) for j in range(n_layers)] for i in range(n_clause)]
       add = Add(name='add')
@@ -86,6 +124,8 @@ class CNN(Model):
 
     # Forward
     h = [embed(clause) for clause in inputs]
+    if self.pe:
+      h = [pe(hi) for hi in h]
     h = [drop_emb(hi) for hi in h]
 
     if sa_scale:
@@ -100,6 +140,7 @@ class CNN(Model):
       h = [drop_conv[j](hi) for hi in h]
       if residue:
         h = [add([h[i], r[i]]) for i in range(n_clause)]
+
     
     h = [pool(hi) for hi in h]
     h = [flatten(hi) for hi in h]
