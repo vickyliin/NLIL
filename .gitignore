@@ -1,3 +1,8 @@
+# Django
+migrations
+db.sqlite3
+
+# Vickygod
 *.sw?
 PyCCS/
 news.json
