@@ -43,7 +43,7 @@ def init_model():
 def nlil(request):
     init_model()
 
-    ind = request.GET.get('ind', random.choice(dataset.data.index))
+    ind = int(request.GET.get('ind', random.choice(dataset.data.index)))
     Arg1 = ' '.join(dataset.data.Arg1[ind])
     Arg2 = ' '.join(dataset.data.Arg2[ind])
     predict = dataset.data.predict[ind]
