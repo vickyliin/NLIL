@@ -169,8 +169,13 @@ class CNN(Model):
     else:
       return super().fit(inp, out, **kwargs)
 
+  def evaluate(self, testset, **kwargs):
+    inp, out = self._generate_vector(testset)
+    if self.feature:
+      inp += [self.featurize(testset)]
+    return super().evaluate(inp, out, **kwargs)
   def predict_class(self, testset):
-    inp = self._generate_vector(testset)
+    inp, _ = self._generate_vector(testset)
     if self.feature:
       inp += [self.featurize(testset)]
     out = self.predict(inp)
@@ -199,7 +204,7 @@ class CNN(Model):
       return inp, out
 
     else:
-      return inp
+      return inp, None
   
   def plot(self, filename):
     from IPython.display import Image
