@@ -28,7 +28,7 @@ def scaled_attention(scale):
   return attention
 
 class Autoencoder(Model):
-  def __init__(self, dim=300, encode_layers=None, decode_layers=None):
+  def __init__(self, dim=300, drop=0, encode_layers=None, decode_layers=None):
     if encode_layers is None:
       encode_layers = [dim//2, dim//4]
     if decode_layers is None:
@@ -38,11 +38,13 @@ class Autoencoder(Model):
 
     inputs = Input(shape=(dim, ), name='input')
     enc = [Dense(encode_layers[0], input_shape=(dim,), activation='relu')]
-    enc += [Dense(n, activation='relu') for n in encode_layers[1:]]
+    for n in encode_layers[1:]:
+      enc += [Dropout(drop), Dense(n, activation='relu')]
     self.encoder = encoder = Sequential(enc)
 
     decoder = [Dense(decode_layers[0], input_shape=(dim_code, ), activation='relu')]
-    decoder += [Dense(n, activation='relu') for n in decode_layers[1:]+[dim]]
+    for n in decode_layers[1:]+[dim]:
+      decoder += [Dropout(drop), Dense(n, activation='relu')]
     self.decoder = decoder = Sequential(decoder)
 
     output = decoder(encoder(inputs))
