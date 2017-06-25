@@ -20,7 +20,6 @@ def run_once(f):
 
 @run_once
 def init_model():
-
     global dataset
 
     with open(base + 'data/dataset.p', 'rb') as f:
@@ -46,7 +45,7 @@ def nlil(request):
     ind = int(request.GET.get('ind', random.choice(dataset.data.index)))
     Arg1 = ' '.join(dataset.data.Arg1[ind])
     Arg2 = ' '.join(dataset.data.Arg2[ind])
-    predict = dataset.data.predict[ind]
+    predict = np.dstack(dataset.data.predict[ind])[0]
     Relation = dataset.data.Relation[ind]
     return render(request, 'vickygod/base.html',
                   {'Arg1': Arg1, 'Arg2': Arg2, 'predict': predict, 'Relation': Relation})

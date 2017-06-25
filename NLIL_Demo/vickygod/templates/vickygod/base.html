@@ -23,23 +23,35 @@
       <div-->
       <div id="output">
         <h2>{{ Arg1 }}</h2>
-        {{ Arg2 }}
+        <div class="jumbotron">{{ Arg2 }}</div>
         <hr>
         <h2>Predicted Laws Sorted by Probability</h2>
-        <ol>
-        {% for pred in predict|slice:":25" %}
-          {% if pred == Relation %}
-            <li><b>{{ pred }} (Ans)</b></li>
-          {% else %}
-            <li>{{ pred }}</li>
-          {% endif %}
-        {% endfor %}
-        </ol>
-      </div>
+        <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Law</th>
+            <th>Probability</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rank, pred, prob in predict|slice:":25" %}
+          <tr {% if pred == Relation %}class="success"{% endif %}>
+            <th scope="row">{{ rank }}</th>
+            {% if pred == Relation %}
+              <td><b>{{ pred }} (Ans)</b></td>
+            {% else %}
+              <td>{{ pred }}</td>
+            {% endif %}
+            <td>{{ prob|floatformat:7 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </body>
 
-  <script>
+  <!--script>
     var submit = 'button'
     $(submit).click(
       function () {
@@ -57,6 +69,6 @@
         }
       }
     );
-  </script>
+  </script-->
 
 </html>

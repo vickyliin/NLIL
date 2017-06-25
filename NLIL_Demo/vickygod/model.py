@@ -195,7 +195,7 @@ class CNN(Model):
             inp += [self.featurize(testset)]
         out = self.predict(inp)
 
-        return pd.Series((self.torel[x[::-1]] for x in out.argsort()),
+        return pd.Series(((np.arange(self.n_relation) + 1, self.torel[prob.argsort()[::-1]], prob[prob.argsort()[::-1]]) for prob in out),
                          index=testset.data.index,
                          name='Law')
 
