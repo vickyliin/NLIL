@@ -3,6 +3,7 @@ migrations
 db.sqlite3
 
 # Vickygod
+model/
 *.sw?
 PyCCS/
 news.json
